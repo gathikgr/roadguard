@@ -1,0 +1,22 @@
+# Road damage inference
+
+The worker runs four local detectors on every still image and on sampled video frames. The stages run in sequence, and later detectors still run if an earlier one returns no boxes:
+
+- The Apache-2.0 `peterhdd/pothole-detection-yolov8` YOLOv8s checkpoint detects potholes.
+- The user-requested `yashshree7054/road-hazard-yolov8` YOLOv8n checkpoint adds pothole, crack, and waterlogging detections. RoadGuard pins the source revision and validates the downloaded checkpoint's Git object SHA before loading it. The model's validation-set confidence thresholds are applied per class.
+- Ultralytics YOLO-World `yolov8s-worldv2.pt` uses text prompts for likely road debris/obstructions, damaged or bent traffic signs, damaged/broken traffic lights, damaged guardrails, open manholes, and damaged streetlights. It is an open-vocabulary suggestion model, not a validated road-asset damage classifier.
+- Apache-2.0 Grounding DINO Tiny (`IDEA-Research/grounding-dino-tiny`, pinned revision) checks explicit referring phrases for fallen trees and road-blocking debris. It is an independent obstruction fallback, also a zero-shot suggestion model.
+
+All four models run on CPU and sample videos once per second by default. Overlapping same-class boxes are merged. Results include pixel-space boxes, each detection's source model, and a per-model ready/unavailable status. A missing or failed model does not prevent the other stages from running. The two prompt-based models can have false positives and cannot establish that a sign or signal is operationally defective; every result needs human confirmation. Their candidates are displayed in the preview but are not auto-published to route alerts. Only the two trained road models feed the existing geotagged-image alert behavior.
+
+The auxiliary repository describes itself as a student baseline. Its held-out test mAP@0.5 is 0.177 overall; waterlogging is 0.353, potholes 0.137, and cracks 0.040 (about 1% crack recall). Wet patches may be called waterlogging. These labels are suggestions, not reliable confirmations. The repository is AGPL-3.0 and its CMIRD dataset is CC BY-NC-SA 4.0; review those terms before commercial deployment. YOLO-World and Ultralytics also have AGPL licensing; review the license or obtain a commercial license before commercial use.
+
+For still images, the worker reads capture time and GPS coordinates from EXIF. GPS describes the camera position, not the position of an individual bounding box. A geotagged image with detections creates one approximate published alert per detected class at the camera coordinate. Photos without EXIF GPS still show detections but do not create map alerts. Video detections do not auto-publish because one GPS tag cannot locate every frame from a moving camera.
+
+When a server-only `SUPABASE_SERVICE_ROLE_KEY` (or `SUPABASE_SECRET_KEY`) is configured in the API environment, the API writes alerts to Supabase and syncs published rows for nearby and route queries; inserts use a deterministic ID so polling/retries do not create duplicates. The publishable key alone cannot bypass the project's incident-table RLS insert policy. Without a server secret, alerts remain in the running API's memory and are lost on restart.
+
+For the pothole model, a prior run on `lidar1.jpg` returned three boxes at confidences 0.839, 0.327 and 0.162, while missing other visible holes. One image is not an accuracy evaluation. Real deployment needs a locally representative labeled validation set and review of model suggestions.
+
+The latest full pipeline run on `lidar1.jpg` loaded all three stages and returned those same three pothole boxes, plus YOLO-World candidates for `open_manhole` (0.289) and `waterlogging` (0.250). The open-manhole candidate overlaps a visible pothole and is likely a false positive; the waterlogging box covers most of the frame and is too broad to localize a hazard. They remain visible as zero-shot suggestions and are excluded from automatic route alerts. This sample contains no traffic sign, traffic light, debris, or fallen-tree case, so those prompts have not been validated on representative examples.
+
+References: [pothole model card](https://huggingface.co/peterhdd/pothole-detection-yolov8), [multi-hazard repository](https://github.com/yashshree7054/road-hazard-yolov8), [YOLO-World documentation](https://docs.ultralytics.com/models/yolo-world/), [Ultralytics license](https://github.com/ultralytics/ultralytics/blob/main/LICENSE).

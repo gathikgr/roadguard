@@ -1,0 +1,60 @@
+services:
+  api:
+    build: ./backend
+    ports: ["8001:8000"]
+    environment:
+      API_ENV: development
+      API_CORS_ORIGINS: http://localhost:5173,http://localhost:8080,http://localhost:8081,http://127.0.0.1:8081
+      VIDEO_UPLOAD_DIR: /app/uploads
+      MAX_UPLOAD_MB: 200
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
+      REDIS_URL: redis://redis:6379/0
+      SUPABASE_URL: ${SUPABASE_URL:-}
+      SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}
+      SUPABASE_SERVICE_ROLE_KEY: ${SUPABASE_SERVICE_ROLE_KEY:-}
+      SUPABASE_SECRET_KEY: ${SUPABASE_SECRET_KEY:-}
+      N8N_WEBHOOK_URL: ${N8N_WEBHOOK_URL:-}
+      N8N_WEBHOOK_SECRET: ${N8N_WEBHOOK_SECRET:-}
+    volumes:
+      - ./data/videos:/app/uploads
+    depends_on: [redis]
+  video-worker:
+    platform: linux/amd64
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.worker
+    environment:
+      REDIS_URL: redis://redis:6379/0
+      VIDEO_UPLOAD_DIR: /app/uploads
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-2.0-flash}
+      VIDEO_SAMPLE_SECONDS: 1
+      VIDEO_MAX_FRAMES: 300
+      ROAD_DAMAGE_CONFIDENCE: 0.15
+      ROAD_OBSTRUCTION_CONFIDENCE: 0.22
+      HF_HUB_DISABLE_XET: "1"
+    volumes:
+      - ./data/videos:/app/uploads
+      - ./data/model-cache/weights:/app/weights
+      - model-cache:/root/.cache/huggingface
+    depends_on: [redis]
+    restart: unless-stopped
+  redis:
+    image: redis:7.4-alpine
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes:
+      - redis-data:/data
+    restart: unless-stopped
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:8001
+        VITE_SUPABASE_URL: ${SUPABASE_URL:-}
+        VITE_SUPABASE_PUBLISHABLE_KEY: ${SUPABASE_PUBLISHABLE_KEY:-}
+    ports: ["8080:80"]
+    depends_on: [api]
+volumes:
+  redis-data:
+  model-cache:
