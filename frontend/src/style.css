@@ -19,12 +19,23 @@
 .road-map-endpoint.route-origin{background:#35784e}.road-map-endpoint.route-destination{background:#d67250}
 .road-map-hazard{width:27px;height:27px;padding:3px;display:grid;place-items:center;border:2px solid white;border-radius:50%;box-shadow:0 2px 7px #263d3188;color:white}
 .road-map-hazard.high,.road-map-hazard.critical{background:#d66e4e}.road-map-hazard.medium{background:#d8a346}.road-map-hazard.low{background:#83a56d}.road-map-hazard.selected{outline:3px solid #264d39;outline-offset:2px}
+.road-map-hazard.suggestion{background:#c79031;border-style:dashed;box-shadow:0 2px 7px #263d3188,0 0 0 2px #f5e4bc}
 .road-map-controls{position:absolute;right:10px;top:10px;z-index:5;display:grid;gap:4px}
 .road-map-controls button{width:31px;height:31px;display:grid;place-items:center;border:1px solid #dce4dc;background:#fff;color:#385345;border-radius:6px;box-shadow:0 1px 4px #17291c22}
 .road-map-controls button:hover{background:#f0f5ec}
 .road-map-attribution,.road-map-status{position:absolute;z-index:4;bottom:8px;background:#ffffffed;border-radius:4px;padding:5px 7px;color:#506257;font-size:9px;box-shadow:0 1px 4px #17291c22}
 .road-map-attribution{right:8px}.road-map-attribution a{color:#315e48;text-decoration:underline}
 .road-map-status{left:8px;pointer-events:none}
+.road-map-hazard.pinging{z-index:6;animation:road-map-hazard-ping 1.4s ease-out infinite}
+@keyframes road-map-hazard-ping{0%{box-shadow:0 0 0 0 #d66e4e88,0 2px 7px #263d3188}70%{box-shadow:0 0 0 13px #d66e4e00,0 2px 7px #263d3188}100%{box-shadow:0 0 0 0 #d66e4e00,0 2px 7px #263d3188}}
+.road-map-photo-preview{position:absolute;z-index:7;transform:translate(-50%,-100%) translateY(-24px);width:196px;padding:6px;background:#fff;border:1px solid #dfe7df;border-radius:9px;box-shadow:0 8px 24px #172b2644;overflow:visible}
+.road-map-photo-preview>img{display:block;width:100%;height:112px;object-fit:cover;border-radius:5px;background:#edf1ed}
+.road-map-photo-caption{display:grid;gap:3px;padding:6px 3px 2px}
+.road-map-photo-caption b{font-size:10px;color:#294438}
+.road-map-photo-caption span{font-size:8px;color:#839087}
+.road-map-photo-close{position:absolute;z-index:2;right:10px;top:10px;width:23px;height:23px;display:grid;place-items:center;border:0;border-radius:50%;background:#102622cc;color:white}
+.road-map-photo-empty{height:112px;display:grid;place-content:center;justify-items:center;gap:7px;background:#edf2ec;color:#87958b;border-radius:5px;font-size:8px}
+.road-map-photo-tip{position:absolute;left:calc(50% - 7px);bottom:-7px;width:13px;height:13px;background:white;border-right:1px solid #dfe7df;border-bottom:1px solid #dfe7df;transform:rotate(45deg)}
 .road-map-empty{position:absolute;inset:0;z-index:2;display:grid;align-content:center;justify-items:center;gap:10px;padding:24px;text-align:center;color:#53665a;background:#e9efe9}
 .media-preview-panel{margin-top:14px;padding:15px;background:#fff;border:1px solid #e7ece7;border-radius:9px}
 .media-preview-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}

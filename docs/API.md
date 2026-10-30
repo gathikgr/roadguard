@@ -10,10 +10,10 @@ Base URL: `http://localhost:8000`. OpenAPI is available at `/docs`.
 | POST | `/api/videos` | Admin-only, size-limited prerecorded upload with filename sanitization and basic container-signature check |
 | POST | `/api/images` | Admin-only JPEG, PNG or WEBP upload with size and file-signature checks |
 | GET | `/api/videos` / `/api/videos/{id}` | Admin-only uploaded-video metadata |
-| POST | `/api/videos/{id}/process` | Admin-only; queues an uploaded image or prerecorded video for the Redis-backed YOLOv8 pothole worker |
+| POST | `/api/videos/{id}/process` | Admin-only; queues an uploaded image or prerecorded video for the Redis-backed YOLOv8 ensemble analysis worker |
 | GET | `/api/jobs/{id}` | Admin-only inference job status and unverified frame detections |
 | POST | `/api/jobs/{id}/cancel` | Admin-only cancellation of a queued job |
-| GET | `/api/hazards/nearby?latitude=&longitude=&radius_m=` | Published hazards only |
+| GET | `/api/hazards/nearby?latitude=&longitude=&radius_m=` | Published hazards and nearby geotagged AI suggestions (suggestions are marked pending review) |
 | POST | `/api/hazards/route-query` | Published hazards within `corridor_m` of supplied `[lat,lon]` route vertices |
 | POST | `/api/route/plan` | Geocodes a typed start/destination or resolves a destination from live GPS, then returns OSRM route geometry and turn-by-turn URL |
 | POST | `/api/reports` | Create pending user report, no automatic publication |

@@ -4,6 +4,7 @@ export type RoadDetection = {
   frame_second: number;
   model_class: string;
   source_model?: string;
+  evidence?: string;
   confidence: number;
   bbox_xyxy: [number, number, number, number];
 };
@@ -31,7 +32,7 @@ function DetectionBoxes({ detections, width, height }: { detections: RoadDetecti
       const [x1, y1, x2, y2] = d.bbox_xyxy;
       const label = `${d.model_class.replaceAll('_', ' ')}${d.source_model?.includes('YOLO-World') ? ' candidate' : ''} · ${Math.round(d.confidence * 100)}%`;
       return <g key={`${d.frame_second}-${index}`}>
-        <rect x={x1} y={y1} width={Math.max(0, x2 - x1)} height={Math.max(0, y2 - y1)} rx={4} className="detection-box" />
+        <rect x={x1} y={y1} width={Math.max(0, x2 - x1)} height={Math.max(0, y2 - y1)} rx={4} className="detection-box"><title>{d.evidence || d.model_class.replaceAll("_", " ")}</title></rect>
         <text x={Math.max(0, x1)} y={Math.max(labelSize, y1 - 8)} fontSize={labelSize} className="detection-label">{label}</text>
       </g>;
     })}
@@ -43,7 +44,8 @@ export default function DetectionPreview({ media, job }: Props) {
   const [videoSize, setVideoSize] = useState({ width: 0, height: 0 });
   const [currentTime, setCurrentTime] = useState(0);
   const videoRef = useRef<HTMLVideoElement>(null);
-  const all = (job?.result?.detections || []) as RoadDetection[];
+  const parsedResult = typeof job?.result === 'string' ? (() => { try { return JSON.parse(job.result); } catch { return null; } })() : job?.result;
+  const all = (parsedResult?.detections || []) as RoadDetection[];
   const detections = media.kind === 'image'
     ? all
     : all.filter(d => Math.abs(d.frame_second - currentTime) <= 0.55);
@@ -52,7 +54,7 @@ export default function DetectionPreview({ media, job }: Props) {
 
   return <section className="media-preview-panel" aria-live="polite">
     <header className="media-preview-head">
-      <div><span className="eyebrow">MODEL EVIDENCE</span><h2>{media.kind === 'image' ? 'Image detections' : 'Video detections'}</h2><p>{media.name} · {job?.result?.model || 'Road damage model'}</p></div>
+      <div><span className="eyebrow">MODEL EVIDENCE</span><h2>{media.kind === 'image' ? 'Image detections' : 'Video detections'}</h2><p>{media.name} · {parsedResult?.model || 'Road damage model'}</p></div>
       <span className={`pill ${completed ? 'preview-ready' : 'pending'}`}>{job?.status || 'UPLOADING'}</span>
     </header>
     <div className="media-preview-stage">
@@ -63,10 +65,10 @@ export default function DetectionPreview({ media, job }: Props) {
         <video ref={videoRef} src={media.url} controls playsInline preload="metadata" onLoadedMetadata={event => setVideoSize({ width: event.currentTarget.videoWidth, height: event.currentTarget.videoHeight })} onTimeUpdate={event => setCurrentTime(event.currentTarget.currentTime)} />
         {completed && <DetectionBoxes detections={detections} width={videoSize.width} height={videoSize.height} />}
       </div>}
-      {completed && detections.length === 0 && <div className="no-boxes">{media.kind === 'video' ? `No detections at ${currentTime.toFixed(1)}s. Boxes appear at sampled video frames.` : 'The model found no road-damage boxes in this image.'}</div>}
-      {!completed && <div className="preview-processing">{job?.status === 'FAILED' ? `Processing failed: ${job.error || 'worker error'}` : 'Running road-damage detection…'}</div>}
+      {completed && detections.length === 0 && <div className="no-boxes">{media.kind === 'video' ? `No detections at ${currentTime.toFixed(1)}s. Boxes appear at sampled video frames.` : 'The YOLOv8 ensemble found no road-hazard boxes in this image.'}</div>}
+      {!completed && <div className="preview-processing">{job?.status === 'FAILED' ? `Processing failed: ${job.error || 'worker error'}` : 'Local YOLOv8 models are analyzing the uploaded media…'}</div>}
     </div>
-    <div className="media-preview-footer"><span>{completed ? `${all.length} AI ${media.kind === 'image' ? 'image detections' : 'detections across sampled frames'}${job.result?.location ? ` · GPS ${job.result.location.latitude.toFixed(5)}, ${job.result.location.longitude.toFixed(5)}` : media.kind === 'image' ? ' · no EXIF GPS found' : ''}${job.result?.metadata?.captured_at ? ` · captured ${job.result.metadata.captured_at}` : ''}` : 'Video detections are sampled once per second.'}</span>
+    <div className="media-preview-footer"><span>{completed ? `${all.length} AI ${media.kind === 'image' ? 'image detections' : 'detections across sampled frames'}${parsedResult?.location ? ` · GPS ${parsedResult.location.latitude.toFixed(5)}, ${parsedResult.location.longitude.toFixed(5)}` : media.kind === 'image' ? ' · no EXIF GPS found' : ''}${parsedResult?.metadata?.captured_at ? ` · captured ${parsedResult.metadata.captured_at}` : ''}` : 'Local YOLOv8 ensemble processing.'}</span>
       {media.kind === 'video' && completed && frames.length > 0 && <div className="frame-jumps" aria-label="Detected video timestamps">{frames.map(second => <button key={second} className="button small" onClick={() => { if (videoRef.current) videoRef.current.currentTime = second; setCurrentTime(second); }} type="button">{second.toFixed(1)}s · {all.filter(d => d.frame_second === second).length} boxes</button>)}</div>}
     </div>
   </section>;

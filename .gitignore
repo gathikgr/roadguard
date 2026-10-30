@@ -17,3 +17,5 @@ data/
 models/
 *.db
 .DS_Store
+output/
+roadguard-ppt-build/

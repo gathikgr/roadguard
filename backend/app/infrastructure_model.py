@@ -16,8 +16,19 @@ PROMPTS = (
     ("standing water on road", "waterlogging"),
     ("flooded road", "waterlogging"),
     ("puddle on road", "waterlogging"),
+    ("deep water on road", "waterlogging"),
+    ("waterlogging on road", "waterlogging"),
+    ("pothole", "pothole"),
+    ("road pothole", "pothole"),
     ("debris on road", "road_obstruction"),
-    ("fallen tree blocking road", "road_obstruction"),
+    ("fallen tree", "fallen_tree"),
+    ("tree trunk on road", "fallen_tree"),
+    ("fallen log", "fallen_tree"),
+    ("fallen tree blocking road", "fallen_tree"),
+    ("log on road", "fallen_tree"),
+    ("tree branch on road", "fallen_tree"),
+    ("traffic cone", "road_obstruction"),
+    ("downed power line", "road_obstruction"),
     ("rock blocking road", "road_obstruction"),
     ("large object blocking road", "road_obstruction"),
     ("damaged traffic sign", "damaged_traffic_sign"),
@@ -39,17 +50,25 @@ class InfrastructureModel:
         from ultralytics import YOLO
 
         configured = os.getenv("ROAD_INFRASTRUCTURE_MODEL_PATH")
-        weights = Path(configured).expanduser() if configured else MODEL_FILE
-        # Ultralytics resolves its official release URL for this named checkpoint.
+        if configured:
+            weights = Path(configured).expanduser()
+        elif Path(f"/app/weights/{MODEL_FILE}").is_file():
+            weights = Path(f"/app/weights/{MODEL_FILE}")
+        else:
+            weights = MODEL_FILE
         self.model = YOLO(str(weights))
         self.model.set_classes(PROMPT_NAMES)
 
     def predict_image(self, image, *, frame_second: float = 0.0) -> list[Detection]:
+        if not hasattr(image, "convert"):
+            import numpy as np
+            from PIL import Image
+            image = Image.fromarray(np.asarray(image, dtype=np.uint8)).convert("RGB")
         result = self.model.predict(
             image,
-            conf=float(os.getenv("ROAD_INFRASTRUCTURE_CONFIDENCE", "0.18")),
+            conf=float(os.getenv("ROAD_INFRASTRUCTURE_CONFIDENCE", "0.035")),
             iou=NMS_IOU_THRESHOLD,
-            imgsz=IMAGE_SIZE,
+            imgsz=640,
             verbose=False,
         )[0]
         names = result.names

@@ -14,8 +14,11 @@ REVISION = "741f91d25d2dfc1cf99b4101cad8b2d4a1cc4613"
 WEIGHTS_BLOB_SHA1 = "ee3bedb84ba211e20f5228dcbc438995bd2f381e"
 WEIGHTS_URL = f"https://raw.githubusercontent.com/{REPO}/{REVISION}/weights/best.pt"
 CLASS_NAMES = {0: "pothole", 1: "crack", 2: "waterlogging"}
-# Validation-split thresholds published alongside the checkpoint.
-CLASS_THRESHOLDS = {"pothole": 0.2202202202, "crack": 0.0740740741, "waterlogging": 0.2912912913}
+CLASS_THRESHOLDS = {
+    "pothole": float(os.getenv("ROAD_POTHOLE_CONFIDENCE", "0.15")),
+    "crack": float(os.getenv("ROAD_CRACK_CONFIDENCE", "0.06")),
+    "waterlogging": float(os.getenv("ROAD_WATERLOGGING_CONFIDENCE", "0.04")),
+}
 
 
 def _download_weights() -> Path:
@@ -53,6 +56,10 @@ class MultiHazardModel:
 
     def predict_image(self, image, *, frame_second: float = 0.0) -> list[Detection]:
         from .road_damage_model import IMAGE_SIZE, NMS_IOU_THRESHOLD
+        if not hasattr(image, "convert"):
+            import numpy as np
+            from PIL import Image
+            image = Image.fromarray(np.asarray(image, dtype=np.uint8)).convert("RGB")
         result = self.model.predict(image, conf=min(CLASS_THRESHOLDS.values()), iou=NMS_IOU_THRESHOLD, imgsz=IMAGE_SIZE, verbose=False)[0]
         detections = []
         for box in result.boxes:

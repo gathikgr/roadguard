@@ -1,6 +1,6 @@
 # RoadGuard AI
 
-RoadGuard AI is a road-hazard reporting and review app. It separates model suggestions from admin-confirmed public incidents. The local Docker stack runs a CPU-only YOLOv8s pothole model over uploaded images and sampled prerecorded video frames. The API still uses in-memory incident records and local video storage, so it is not a production data backend.
+RoadGuard AI is a road-hazard reporting and review app. It separates model suggestions from admin-confirmed public incidents. The local Docker stack runs a YOLOv8 road-damage model alongside the existing road-hazard, infrastructure, and obstruction detectors. It does not require Gemini. The API still uses in-memory incident records and local video storage, so it is not a production data backend.
 
 ## What exists
 
@@ -16,7 +16,7 @@ Backend: `cd backend && python -m venv .venv && . .venv/bin/activate && pip inst
 
 Frontend: `cd frontend && npm install && npm run dev`
 
-Or run the local containers with `docker compose up --build` (frontend at `http://localhost:8080`, API at `http://localhost:8001`). The first worker startup downloads CPU-only inference dependencies and both checkpoints. On Apple Silicon, the worker uses Linux amd64 emulation and can be slower. The dashboard accepts JPG, PNG and WEBP images or prerecorded MP4, MOV and WEBM clips. Geotagged still images with detections publish approximate camera-location alerts to route users on the same running API; images without GPS and all video results remain detections only. The API stores incidents in memory and media on local disk.
+Or run the local containers with `docker compose up --build` (frontend at `http://localhost:8080`, API at `http://localhost:8001`). The worker downloads and caches model checkpoints on first startup; subsequent starts reuse the Docker model-cache volume. The dashboard accepts JPG, PNG and WEBP images or prerecorded MP4, MOV and WEBM clips. Videos are sampled every two seconds, up to 12 frames, for the local detector ensemble. Geotagged still-image detections enter the review queue with an approximate camera location; images without GPS and all video results remain review-only detections until confirmed. The API stores incidents in memory and media on local disk.
 
 ## Vercel deployment
 
@@ -33,7 +33,7 @@ The UI requests live device location to center OpenStreetMap, find nearby report
 | Supabase | PostgreSQL schema is deployed; current API incidents remain in demo memory | Backend `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`; frontend public URL/key | Optional for local demo; hosted usage may cost |
 | Map | OpenStreetMap centered on browser GPS; map is for location context, not navigation | None | Public map tile service terms and attribution apply |
 | Weather provider | Open-Meteo current conditions by browser GPS | None for non-commercial use | Free tier is non-commercial only; commercial use requires another plan/provider |
-| Road-damage models | YOLOv8s pothole detector plus the user's YOLOv8n pothole/crack/waterlogging model; see `docs/model-inference.md` for benchmark and license limits | Worker environment only | Worker compute and persistent hosting may cost; auxiliary dataset-derived weights are non-commercial |
+| Road-hazard analysis | YOLOv8 road-damage model plus specialist local detectors; see `docs/model-inference.md` | Worker model cache | Worker compute and model downloads may incur costs |
 | Hosting | Frontend static host and persistent API/worker host | Provider secret manager / CLI login | Hosting may cost |
 
 Do not put service-role keys or model files in the frontend or Git. The `.env` file is ignored. The API now has a Supabase insert/read path, enabled by `SUPABASE_SERVICE_ROLE_KEY` in the server environment; without it, automatic alerts stay in local memory. Persistent media storage and worker compute are still needed for production. Camera GPS is an approximate photo viewpoint, not a surveyed coordinate for each detected object.
@@ -44,6 +44,6 @@ See `docs/API.md`. The in-memory repository is for local demonstration only; use
 
 ## Model and source notes
 
-The Docker worker uses an Apache-2.0 YOLOv8s pothole checkpoint on uploaded still images and sampled frames from prerecorded videos. See `docs/model-inference.md` for setup, limitations, attribution and license notes. Uploaded video is historical prerecorded media, never live CCTV.
+The Docker worker runs the YOLOv8 road-damage model with the existing specialist road-hazard detectors locally. See `docs/model-inference.md` for setup, limitations, attribution and license notes. Uploaded video is historical prerecorded media, never live CCTV.
 
-Video uploads are size-limited and container-signature checked; image uploads are limited to supported formats and checked against their file signatures. Both use generated storage names. Docker Compose includes Redis-backed media jobs and a YOLOv8 worker. The first worker start downloads the model checkpoint. This configuration is local development only; the current Vercel projects do not run this persistent worker, shared storage or durable incident repository. Those production services still need persistent hosting.
+Video uploads are size-limited and container-signature checked; image uploads are limited to supported formats and checked against their file signatures. Both use generated storage names. Docker Compose includes Redis-backed media jobs and the local model worker. This configuration is local development only; the current Vercel projects do not run this persistent worker, shared storage or durable incident repository. Those production services still need persistent hosting.

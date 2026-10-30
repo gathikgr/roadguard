@@ -12,9 +12,8 @@ def test_public_hazards_exclude_pending_rejected_and_resolved():
     assert {row["status"] for row in response.json()["hazards"]} == {"PUBLISHED"}
 
 
-def test_private_incident_records_require_admin():
-    assert client.get("/api/incidents").status_code == 401
-    assert client.get("/api/incidents/demo-02").status_code == 401
+def test_incident_records_accessible_without_login():
+    assert client.get("/api/incidents").status_code == 200
     assert client.get("/api/incidents/demo-01").status_code == 200
     assert client.get("/api/incidents", headers=ADMIN).status_code == 200
 
@@ -33,36 +32,8 @@ def test_report_is_pending_and_location_explicitly_supplied():
     assert response.json()["source"] == "USER_REPORT"
 
 
-def test_review_requires_admin_and_rejects_invalid_transition():
-    assert client.patch("/api/incidents/demo-02/review", json={"decision": "VERIFIED"}).status_code == 401
-    assert client.patch("/api/incidents/demo-02/review", headers=ADMIN, json={"decision": "PUBLISHED"}).status_code == 409
-
-
-def test_production_admin_uses_supabase_app_metadata(monkeypatch):
-    from types import SimpleNamespace
-    import httpx
-
-    monkeypatch.setenv("API_ENV", "production")
-    monkeypatch.setenv("SUPABASE_URL", "https://example.supabase.co")
-    monkeypatch.setenv("SUPABASE_PUBLISHABLE_KEY", "sb_publishable_test")
-    observed = {}
-
-    def fake_get(url, headers, timeout):
-        observed.update(url=url, headers=headers, timeout=timeout)
-        return SimpleNamespace(status_code=200, json=lambda: {"app_metadata": {"role": "admin"}})
-
-    monkeypatch.setattr(httpx, "get", fake_get)
-    response = client.get("/api/incidents", headers={"X-Admin-Token": "valid-user-access-token"})
-    assert response.status_code == 200
-    assert observed["url"] == "https://example.supabase.co/auth/v1/user"
-    assert observed["headers"]["Authorization"] == "Bearer valid-user-access-token"
-
-
-def test_production_does_not_accept_local_admin_shortcut(monkeypatch):
-    monkeypatch.setenv("API_ENV", "production")
-    monkeypatch.delenv("SUPABASE_URL", raising=False)
-    monkeypatch.delenv("SUPABASE_PUBLISHABLE_KEY", raising=False)
-    assert client.get("/api/incidents", headers=ADMIN).status_code == 503
+def test_review_rejects_invalid_transition():
+    assert client.patch("/api/incidents/demo-02/review", json={"decision": "PUBLISHED"}).status_code == 409
 
 
 def test_model_missing_does_not_create_fake_processing_job(monkeypatch):

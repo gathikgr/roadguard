@@ -13,7 +13,7 @@ MODEL_FILE = "best.pt"
 MODEL_URL = f"https://huggingface.co/{MODEL_REPO}/resolve/main/{MODEL_FILE}"
 MODEL_DISPLAY_NAME = "YOLOv8s · pothole-only"
 CLASS_NAMES = ("pothole",)
-IMAGE_SIZE = 960
+IMAGE_SIZE = 640
 NMS_IOU_THRESHOLD = 0.45
 
 
@@ -24,11 +24,14 @@ class Detection:
     confidence: float
     bbox_xyxy: tuple[float, float, float, float]
     source_model: str | None = None
+    evidence: str | None = None
 
     def to_dict(self) -> dict[str, Any]:
         data = asdict(self)
         if data["source_model"] is None:
             data.pop("source_model")
+        if data["evidence"] is None:
+            data.pop("evidence")
         return data
 
 
